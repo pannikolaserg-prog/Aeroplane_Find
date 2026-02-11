@@ -55,16 +55,8 @@ class APIAdapter(AbstractAdapter):
 
         self.aeroplanes = response.json()
 
+
 test = APIAdapter()
 coordinates = test.get_coordinates("Russia")
 test.get_aeroplanes(coordinates)
-print(test.aeroplanes)
-
-class Plane:
-
-    def __init__(self, country, callsiqn, speed, geo_altitude):
-        self.country = country
-        self.callsign = callsiqn
-        self.speed = speed
-        self.geo_altitude = geo_altitude
 
