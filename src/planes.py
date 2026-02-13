@@ -1,35 +1,33 @@
+from typing import Any, Union
+
+
 class Plane:
+    def __init__(self, country: Any, callsign: Any, speed: Any, geo_altitude: Any) -> None:
+        self.country: str = self._validate_str(country, "Не передано")
+        self.callsign: str = self._validate_str(callsign, "Не передано")
+        self.speed: float = self._validate_float(speed, 0.0)
+        self.geo_altitude: float = self._validate_float(geo_altitude, 0.0)
 
-    def __init__(self, country, callsign, speed, geo_altitude):
-        self.country = self.__validate_str(country)
-        self.callsign = self.__validate_str(callsign)
-        self.speed = self.__validate_float(speed)
-        self.geo_altitude = self.__validate_float(geo_altitude)
-
-    def __ge__(self, other):
+    def __ge__(self, other: Any) -> bool:
         if not isinstance(other, Plane):
             return NotImplemented
         return self.speed >= other.speed
 
-    def __le__(self, other):
+    def __le__(self, other: Any) -> bool:
         if not isinstance(other, Plane):
             return NotImplemented
-        return self.geo_altitude  <= other.geo_altitude
+        return self.geo_altitude <= other.geo_altitude
 
-
-    @staticmethod
-    def __validate_str(string):
-        if not isinstance(string, str):
-            country = "Не передано"
-        else:
-            string = string
-        return string
+    def __str__(self) -> str:
+        return f"Plane({self.country}, {self.callsign}, {self.speed}, {self.geo_altitude})"
 
     @staticmethod
-    def __validate_float(my_float):
-        if not isinstance(my_float, float | int):
-            my_float = 0
+    def _validate_str(value: Any, default: str) -> str:
+        return str(value) if value is not None else default
 
-        else:
-            my_float = my_float
-        return my_float
+    @staticmethod
+    def _validate_float(value: Any, default: float) -> float:
+        try:
+            return float(value) if value is not None else default
+        except (TypeError, ValueError):
+            return default
