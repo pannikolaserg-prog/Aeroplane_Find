@@ -100,5 +100,17 @@
     "callsign": "United Kingdom",
     "speed": 262.87,
     "geo_altitude": 10858.5
+  },
+  {
+    "country": "Test",
+    "callsign": "TEST115880",
+    "speed": 123.4,
+    "geo_altitude": 5678.9
+  },
+  {
+    "country": "Test",
+    "callsign": "TEST123",
+    "speed": 100.0,
+    "geo_altitude": 5000.0
   }
 ]

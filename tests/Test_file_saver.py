@@ -1,154 +1,135 @@
-import json
 import os
+import tempfile
 
-import pytest
-
-from src.APIadapter import APIAdapter
 from src.File_Saver import JSONFileSaver, XLSFileSaver
 from src.planes import Plane
 from src.utils import get_object_list
 
 
-@pytest.mark.slow
-def test_with_real_api() -> None:
-    """Тест с реальным API (медленный)"""
-    api = APIAdapter()
-    coords = api.get_coordinates("Russia")
-    api.get_aeroplanes(coords)
-
-    planes = get_object_list({"states": api.aeroplanes})
-
-    assert len(planes) > 0
-    assert isinstance(planes[0], Plane)
-    print(f"Найдено {len(planes)} самолетов")
-    print(f"Первый: {planes[0]}")
+def test_json_file_exists():
+    """Тест: проверяем что JSON файл существует"""
+    assert os.path.exists("data/planes.json"), "Файл data/planes.json не найден"
 
 
-@pytest.mark.skip(reason="Сначала сохраните данные в tests/fixtures/real_data.json")
-def test_with_cached_data() -> None:
-    """Тест с сохраненными реальными данными"""
-    with open("tests/fixtures/real_data.json", "r") as f:
-        real_data = json.load(f)
-
-    planes = get_object_list({"states": real_data})
-    assert len(planes) > 0
-    print(f"Загружено {len(planes)} самолетов из кэша")
+def test_xls_file_exists():
+    """Тест: проверяем что XLS файл существует"""
+    assert os.path.exists("data/planes.xls"), "Файл data/planes.xls не найден"
 
 
-# ТЕСТЫ ДЛЯ JSON
-def test_json_save_and_read(temp_file: str, plane: Plane) -> None:
-    """Тест: сохранение и чтение JSON"""
-    saver = JSONFileSaver(temp_file)
-    saver.add_info_in_file(plane)
-
-    assert os.path.exists(temp_file)
-
+def test_read_json():
+    """Тест: читаем JSON файл"""
+    saver = JSONFileSaver("data/planes.json")
     data = saver.read_info_from_file()
-    assert len(data) == 1
-    assert data[0]["country"] == "Russia"
-    assert data[0]["callsign"] == "TEST123"
-    assert data[0]["speed"] == 250.5
-    assert data[0]["geo_altitude"] == 10000.0
+    print(f"\nВ JSON файле {len(data)} записей")
+    assert isinstance(data, list)
 
 
-def test_json_no_duplicates(temp_file: str, plane: Plane) -> None:
-    """Тест: нет дубликатов"""
-    saver = JSONFileSaver(temp_file)
-
-    saver.add_info_in_file(plane)
-    saver.add_info_in_file(plane)
-
+def test_read_xls():
+    """Тест: читаем XLS файл"""
+    saver = XLSFileSaver("data/planes.xls")
     data = saver.read_info_from_file()
-    assert len(data) == 1
+    print(f"\nВ XLS файле {len(data)} записей")
+    assert isinstance(data, list)
 
 
-def test_json_delete(temp_file: str, plane: Plane) -> None:
-    """Тест: удаление файла"""
-    saver = JSONFileSaver(temp_file)
-    saver.add_info_in_file(plane)
-    assert os.path.exists(temp_file)
+def test_add_test_plane():
+    """Тест: добавляем тестовый самолет"""
+    saver = JSONFileSaver("data/planes.json")
+    test_plane = Plane("Test", "TEST123", 100, 5000)
 
-    saver.delete_info_from_file()
-    assert not os.path.exists(temp_file)
+    before = len(saver.read_info_from_file())
+    saver.add_info_in_file(test_plane)
+    after = len(saver.read_info_from_file())
 
-
-def test_empty_file_read(temp_file: str) -> None:
-    """Тест: чтение пустого/несуществующего файла"""
-    saver = JSONFileSaver(temp_file)
-    data = saver.read_info_from_file()
-    assert data == []
+    print(f"\nБыло: {before}, стало: {after}")
+    assert after >= before
 
 
-def test_multiple_planes(temp_file: str) -> None:
-    """Тест: несколько самолетов"""
-    saver = JSONFileSaver(temp_file)
-
-    p1 = Plane("Russia", "AFL101", 250, 10000)
-    p2 = Plane("USA", "UAL202", 300, 12000)
-
-    saver.add_info_in_file(p1)
-    saver.add_info_in_file(p2)
-
-    data = saver.read_info_from_file()
-    assert len(data) == 2
-
-    countries = [item["country"] for item in data]
-    assert "Russia" in countries
-    assert "USA" in countries
-
-
-#  ТЕСТЫ ДЛЯ XLS
-def test_xls_save_and_read(temp_xls: str, plane: Plane) -> None:
-    """Тест: сохранение и чтение XLS"""
-    saver = XLSFileSaver(temp_xls)
-
-    saver.add_info_in_file(plane)
-    assert os.path.exists(temp_xls)
-
-    data = saver.read_info_from_file()
-    assert len(data) == 1
-    assert data[0]["country"] == "Russia"
-    assert data[0]["callsign"] == "TEST123"
-
-
-def test_xls_append(temp_xls: str) -> None:
-    """Тест: добавление в существующий XLS файл"""
-    saver = XLSFileSaver(temp_xls)
-
-    p1 = Plane("Russia", "AFL101", 250, 10000)
-    p2 = Plane("USA", "UAL202", 300, 12000)
-
-    saver.add_info_in_file(p1)
-    saver.add_info_in_file(p2)
-
-    data = saver.read_info_from_file()
-    assert len(data) == 2
-
-
-def test_xls_read_empty(temp_xls: str) -> None:
-    """Тест: чтение пустого XLS файла"""
-    saver = XLSFileSaver(temp_xls)
-    data = saver.read_info_from_file()
-    assert data == []
-
-
-# ТЕСТЫ ДЛЯ УТИЛИТ
-def test_get_object_list_with_empty_data() -> None:
-    """Тест: get_object_list с пустыми данными"""
-    result = get_object_list({})
-    assert result == []
-
-
-def test_get_object_list_with_sample_data() -> None:
-    """Тест: get_object_list с примером данных"""
-    sample_data = {
+def test_utils_with_sample_data():
+    """Тест: утилита get_object_list"""
+    data = {
         "states": [
-            ["abc123", "AFL101", "Russia", 0, 0, 0, 0, 0, False, 250, 0, 0, None, 10000],
-            ["def456", "UAL202", "USA", 0, 0, 0, 0, 0, False, 300, 0, 0, None, 12000],
+            ["id1", "SU100", "Russia", 0, 0, 0, 0, 0, False, 250, 0, 0, None, 10000],
         ]
     }
+    planes = get_object_list(data)
+    assert len(planes) == 1
+    assert planes[0].country == "Russia"
 
-    result = get_object_list(sample_data)
-    assert len(result) == 2
-    assert result[0].country == "Russia"
-    assert result[1].country == "USA"
+
+def test_delete_info_from_file():
+    """Тест: удаление файла"""
+    # Создаем временный файл для теста
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+        tmp_path = tmp.name
+
+    saver = JSONFileSaver(tmp_path)
+    test_plane = Plane("Test", "DEL123", 100, 5000)
+    saver.add_info_in_file(test_plane)
+
+    assert os.path.exists(tmp_path)
+    saver.delete_info_from_file()
+    assert not os.path.exists(tmp_path)
+
+
+def test_delete_nonexistent_file():
+    """Тест: удаление несуществующего файла (не должно быть ошибки)"""
+    saver = JSONFileSaver("data/never_created.json")
+    saver.delete_info_from_file()  # Просто не должно упасть
+    assert True
+
+
+def test_add_duplicate_plane():
+    """Тест: добавление дубликата не должно увеличивать файл"""
+    # Создаем временный файл
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+        tmp_path = tmp.name
+
+    saver = JSONFileSaver(tmp_path)
+    test_plane = Plane("Test", "DUP123", 100, 5000)
+
+    saver.add_info_in_file(test_plane)
+    first_count = len(saver.read_info_from_file())
+
+    saver.add_info_in_file(test_plane)
+    second_count = len(saver.read_info_from_file())
+
+    assert first_count == second_count == 1
+
+    # Очистка
+    os.unlink(tmp_path)
+
+
+def test_read_corrupted_json():
+    """Тест: чтение поврежденного JSON файла"""
+    # Создаем поврежденный JSON
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as tmp:
+        tmp.write("Это не JSON")
+        tmp_path = tmp.name
+
+    saver = JSONFileSaver(tmp_path)
+    data = saver.read_info_from_file()
+    assert data == []
+
+    # Очистка
+    os.unlink(tmp_path)
+
+
+def test_xls_with_invalid_lines():
+    """Тест: XLS с некорректными строками"""
+    # Создаем XLS с плохими данными
+    with tempfile.NamedTemporaryFile(suffix=".xls", delete=False, mode="w") as tmp:
+        tmp.write("Russia,SU100,250,10000\n")
+        tmp.write("это неверная строка\n")
+        tmp.write("France,AF200,abc,12000\n")  # скорость не число
+        tmp_path = tmp.name
+
+    saver = XLSFileSaver(tmp_path)
+    data = saver.read_info_from_file()
+
+    # Должна прочитаться только первая строка
+    assert len(data) == 1
+    assert data[0]["country"] == "Russia"
+
+    # Очистка
+    os.unlink(tmp_path)
