@@ -1,110 +1,112 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import requests
 
 
 class AbstractAdapter(ABC):
-    """Абстрактный базовый класс для адаптера API"""
+    """Абстрактный класс для работы с API"""
 
     @abstractmethod
-    def get_coordinates(self, country: str) -> List[str]:
-        """Получить координаты bounding box для страны"""
+    def _connect(self, url: str, params: Optional[Dict[str, Any]] = None) -> Optional[requests.Response]:
+        """Приватный метод подключения к API"""
         pass
 
     @abstractmethod
-    def get_aeroplanes(self, coordinates: List[str]) -> Optional[Dict[str, Any]]:
-        """Получить информацию о самолетах в заданных координатах"""
+    def get_coordinates(self, country: str) -> Dict[str, float]:
+        """Получает координаты страны"""
+        pass
+
+    @abstractmethod
+    def get_aeroplanes(self, coordinates: Dict[str, float]) -> None:
+        """Получает информацию о самолетах"""
         pass
 
 
 class APIAdapter(AbstractAdapter):
-    """Адаптер для работы с OpenStreetMap и OpenSky Network API"""
+    """Класс для работы с nominatim.openstreetmap и opensky-network"""
 
     def __init__(self) -> None:
-        self.openstreetmap_url: str = "https://nominatim.openstreetmap.org/search"
-        self.opensky_url: str = "https://opensky-network.org/api/states/all"
-        self.aeroplanes: Optional[Dict[str, Any]] = None
+        """Приватные атрибуты"""
+        self.__aeroplanes: List[List[Any]] = []
+        self.__nom_url: str = "https://nominatim.openstreetmap.org/search"
+        self.__sky_url: str = "https://opensky-network.org/api/states/all"
+        self.__session: requests.Session = requests.Session()
+        self.__session.headers.update({"User-Agent": "AeroplanFind/1.0"})
 
-        # Заголовки для Nominatim API (требуются для соблюдения политики использования)
-        self.nominatim_headers: Dict[str, str] = {
-            "User-Agent": "test-app/1.0",
-        }
+    @property
+    def aeroplanes(self) -> List[List[Any]]:
+        """Геттер для приватного атрибута"""
+        return self.__aeroplanes
 
-    def get_coordinates(self, country: str) -> List[str]:
+    def _connect(self, url: str, params: Optional[Dict[str, Any]] = None) -> Optional[requests.Response]:
         """
-        Получить bounding box координаты для указанной страны
-
-        Args:
-            country: Название страны
-
-        Returns:
-            List[str]: Список координат [min_lat, max_lat, min_lon, max_lon]
-
-        Raises:
-            requests.RequestException: При ошибке запроса
-            IndexError: Если страна не найдена
+        Приватный метод подключения к API.
+        Отправляет запрос и проверяет статус-код.
         """
-        params: Dict[str, Any] = {
-            "country": country,
-            "format": "json",
-            "limit": 1,
-        }
-
         try:
-            response = requests.get(
-                url=self.openstreetmap_url, params=params, headers=self.nominatim_headers, timeout=10
-            )
-            response.raise_for_status()
+            response: requests.Response = self.__session.get(url, params=params, timeout=10)
 
-            data: List[Dict[str, Any]] = response.json()
+            # Проверка статус-кода
+            if response.status_code == 200:
+                return response
+            else:
+                print(f"Ошибка: статус {response.status_code}")
+                return None
 
-            if not data:
-                raise ValueError(f"Страна '{country}' не найдена")
+        except requests.exceptions.Timeout:
+            print("Ошибка: Таймаут запроса")
+            return None
+        except requests.exceptions.ConnectionError:
+            print("Ошибка: Проблемы с подключением")
+            return None
+        except Exception as e:
+            print(f"Ошибка подключения: {e}")
+            return None
 
-            # Получаем bounding box
-            geo_coordinates: List[str] = data[0].get("boundingbox", [])
-            return geo_coordinates
+    def get_coordinates(self, country: str) -> Dict[str, float]:
+        """Получает координаты страны от nominatim.openstreetmap"""
+        # Вызываем метод подключения
+        params: Dict[str, Union[str, int]] = {"q": country, "format": "json", "limit": 1}
+        response: Optional[requests.Response] = self._connect(self.__nom_url, params)
 
-        except requests.RequestException as e:
-            print(f"Ошибка при запросе к Nominatim API: {e}")
-            raise
-        except (KeyError, IndexError) as e:
-            print(f"Ошибка при обработке ответа от Nominatim API: {e}")
-            raise
+        if response:
+            try:
+                data: List[Dict[str, Any]] = response.json()
+                if data:
+                    bbox: List[str] = data[0].get("boundingbox", [])
+                    if len(bbox) == 4:
+                        return {
+                            "min_lat": float(bbox[0]),
+                            "max_lat": float(bbox[1]),
+                            "min_lon": float(bbox[2]),
+                            "max_lon": float(bbox[3]),
+                        }
+            except (ValueError, KeyError, IndexError) as e:
+                print(f"Ошибка при обработке координат: {e}")
 
-    def get_aeroplanes(self, coordinates: List[str]) -> Optional[Dict[str, Any]]:
-        """
-        Получить информацию о самолетах в заданных координатах
+        # Координаты по умолчанию
+        return {"min_lat": 40.0, "max_lat": 50.0, "min_lon": 30.0, "max_lon": 40.0}
 
-        Args:
-            coordinates: Список координат [min_lat, max_lat, min_lon, max_lon]
-
-        Returns:
-            Optional[Dict[str, Any]]: Информация о самолетах или None при ошибке
-        """
-        if len(coordinates) < 4:
-            raise ValueError("Недостаточно координат. Требуется 4 значения: [min_lat, max_lat, min_lon, max_lon]")
-
+    def get_aeroplanes(self, coordinates: Dict[str, float]) -> None:
+        """Получает информацию о самолетах от opensky-network"""
         params: Dict[str, float] = {
-            "lamin": float(coordinates[0]),
-            "lamax": float(coordinates[1]),
-            "lomin": float(coordinates[2]),
-            "lomax": float(coordinates[3]),
+            "lamin": coordinates["min_lat"],
+            "lamax": coordinates["max_lat"],
+            "lomin": coordinates["min_lon"],
+            "lomax": coordinates["max_lon"],
         }
 
-        try:
-            response = requests.get(url=self.opensky_url, params=params, timeout=10)
-            response.raise_for_status()
+        # Вызываем метод подключения
+        response: Optional[requests.Response] = self._connect(self.__sky_url, params)
 
-            self.aeroplanes = response.json()
-            return self.aeroplanes
-
-        except requests.RequestException as e:
-            print(f"Ошибка при запросе к OpenSky API: {e}")
-            self.aeroplanes = None
-            return None
-        except ValueError as e:
-            print(f"Ошибка при преобразовании координат: {e}")
-            self.aeroplanes = None
-            return None
+        if response:
+            try:
+                data: Dict[str, Any] = response.json()
+                self.__aeroplanes = data.get("states", [])
+                print(f"Получено {len(self.__aeroplanes)} самолетов")
+            except (ValueError, KeyError) as e:
+                print(f"Ошибка при обработке данных: {e}")
+                self.__aeroplanes = []
+        else:
+            self.__aeroplanes = []
