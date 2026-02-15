@@ -32,10 +32,11 @@ def main():
     while True:
         print("\n1. Все самолеты")
         print("2. Топ N по высоте")
-        print("3. Поиск по стране регистрации (Примеры: Russia, USA, Germany, France, China, UK)")
-        print("4. Диапазон высот")
-        print("5. Сохранить найденное в файл")
-        print("6. Выход")
+        print("3. Топ N по скорости")
+        print("4. Поиск по стране регистрации (Примеры: Russia, USA, Germany, France, China, UK)")
+        print("5. Диапазон высот")
+        print("6. Сохранить найденное в файл")
+        print("7. Выход")
 
         cmd = input("> ")
 
@@ -49,9 +50,19 @@ def main():
             top = sorted(planes, key=lambda x: x.geo_altitude, reverse=True)[:n]
             for i, p in enumerate(top, 1):
                 print(f"{i}. {p.country} - {p.geo_altitude}")
-            current_results = top  # СОХРАНЯЕМ ТОП
+            current_results = top
 
         elif cmd == "3":
+            n = int(input("N: "))
+            # Сортируем по скорости (от большей к меньшей)
+            top_speed = sorted(planes, key=lambda x: x.speed, reverse=True)[:n]
+            print(f"\nТОП-{n} ПО СКОРОСТИ:")
+            print("-" * 60)
+            for i, p in enumerate(top_speed, 1):
+                print(f"{i}. {p.country} | {p.callsign} | Скорость: {p.speed} м/с | Высота: {p.geo_altitude}м")
+            current_results = top_speed
+
+        elif cmd == "4":
             f = input("Страна: ")
             found = [p for p in planes if p.country and f.lower() in p.country.lower()]
             print(f"\nНайдено: {len(found)}")
@@ -65,7 +76,7 @@ def main():
 
             current_results = found  # СОХРАНЯЕМ НАЙДЕННЫЕ
 
-        elif cmd == "4":
+        elif cmd == "5":
             try:
                 min_h = float(input("Высота ОТ (м): "))
                 max_h = float(input("Высота ДО (м): "))
@@ -80,7 +91,7 @@ def main():
             except:
                 print("Ошибка! Введите числа")
 
-        elif cmd == "5":
+        elif cmd == "6":
             if current_results:
                 # Очищаем файл перед сохранением
                 if os.path.exists("data/planes.json"):
@@ -97,8 +108,12 @@ def main():
             else:
                 print("Сначала найдите самолеты (пункты 1-4)")
 
-        elif cmd == "6":
+        elif cmd == "7":
+            print("До свидания!")
             break
+
+        else:
+            print("❌ Неверный пункт. Введите 1-7")
 
 
 if __name__ == "__main__":

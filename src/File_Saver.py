@@ -1,31 +1,37 @@
 import json
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
 from json import JSONDecodeError
+from typing import Any, Dict, List
 
 
 class AbstractFileSaver(ABC):
+    """Абстрактный базовый класс для работы с файлами"""
     def __init__(self, filename: str) -> None:
         self.filename: str = filename
 
     @abstractmethod
     def add_info_in_file(self, plane: Any) -> None:
+        """Добавить данные в файл"""
         pass
 
     @abstractmethod
     def read_info_from_file(self) -> List[Dict[str, Any]]:
+        """Прочитать данные из файла"""
         pass
 
     @abstractmethod
     def delete_info_from_file(self) -> None:
+        """Удалить данные из файла"""
         pass
 
 
 class FileSaver(AbstractFileSaver):
+    """Класс для работы с файлом"""
     def __init__(self, filename: str) -> None:
         super().__init__(filename)
 
     def add_info_in_file(self, plane: Any) -> None:
+        """Добавить данные о самолетах в файл"""
         try:
             with open(self.filename, "a+", encoding="UTF-8") as file:
                 file.seek(0)
@@ -41,7 +47,7 @@ class FileSaver(AbstractFileSaver):
                     "country": plane.country,
                     "callsign": plane.callsign,
                     "speed": plane.speed,
-                    "geo_altitude": plane.geo_altitude
+                    "geo_altitude": plane.geo_altitude,
                 }
 
                 # Добавляем если такого еще нет
@@ -57,6 +63,7 @@ class FileSaver(AbstractFileSaver):
             pass
 
     def read_info_from_file(self) -> List[Dict[str, Any]]:
+        """Прочитать данные о самолетах в файле"""
         try:
             with open(self.filename, "r", encoding="UTF-8") as file:
                 try:
@@ -67,8 +74,9 @@ class FileSaver(AbstractFileSaver):
             return []
 
     def delete_info_from_file(self) -> None:
-        """Удаляет файл"""
+        """Удалить данные о самолетах из файла"""
         import os
+
         try:
             os.remove(self.filename)
         except FileNotFoundError:

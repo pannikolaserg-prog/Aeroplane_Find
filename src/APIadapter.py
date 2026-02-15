@@ -1,6 +1,5 @@
-import json
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional
 
 import requests
 
@@ -23,13 +22,13 @@ class APIAdapter(AbstractAdapter):
     """Адаптер для работы с OpenStreetMap и OpenSky Network API"""
 
     def __init__(self) -> None:
-        self.openstreetmap_url: str = 'https://nominatim.openstreetmap.org/search'
-        self.opensky_url: str = 'https://opensky-network.org/api/states/all'
+        self.openstreetmap_url: str = "https://nominatim.openstreetmap.org/search"
+        self.opensky_url: str = "https://opensky-network.org/api/states/all"
         self.aeroplanes: Optional[Dict[str, Any]] = None
 
         # Заголовки для Nominatim API (требуются для соблюдения политики использования)
         self.nominatim_headers: Dict[str, str] = {
-            'User-Agent': 'test-app/1.0',
+            "User-Agent": "test-app/1.0",
         }
 
     def get_coordinates(self, country: str) -> List[str]:
@@ -47,17 +46,14 @@ class APIAdapter(AbstractAdapter):
             IndexError: Если страна не найдена
         """
         params: Dict[str, Any] = {
-            'country': country,
-            'format': 'json',
-            'limit': 1,
+            "country": country,
+            "format": "json",
+            "limit": 1,
         }
 
         try:
             response = requests.get(
-                url=self.openstreetmap_url,
-                params=params,
-                headers=self.nominatim_headers,
-                timeout=10
+                url=self.openstreetmap_url, params=params, headers=self.nominatim_headers, timeout=10
             )
             response.raise_for_status()
 
@@ -91,18 +87,14 @@ class APIAdapter(AbstractAdapter):
             raise ValueError("Недостаточно координат. Требуется 4 значения: [min_lat, max_lat, min_lon, max_lon]")
 
         params: Dict[str, float] = {
-            'lamin': float(coordinates[0]),
-            'lamax': float(coordinates[1]),
-            'lomin': float(coordinates[2]),
-            'lomax': float(coordinates[3]),
+            "lamin": float(coordinates[0]),
+            "lamax": float(coordinates[1]),
+            "lomin": float(coordinates[2]),
+            "lomax": float(coordinates[3]),
         }
 
         try:
-            response = requests.get(
-                url=self.opensky_url,
-                params=params,
-                timeout=10
-            )
+            response = requests.get(url=self.opensky_url, params=params, timeout=10)
             response.raise_for_status()
 
             self.aeroplanes = response.json()

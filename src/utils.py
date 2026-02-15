@@ -1,4 +1,5 @@
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from src.planes import Plane
 
 
@@ -20,7 +21,7 @@ def get_object_list(planes_information: Dict[str, Any]) -> List[Plane]:
             country=plane[2],  # страна
             callsign=plane[1],  # позывной
             speed=plane[9],  # скорость
-            geo_altitude=plane[13]  # высота
+            geo_altitude=plane[13],  # высота
         )
         object_list.append(obj)
 
